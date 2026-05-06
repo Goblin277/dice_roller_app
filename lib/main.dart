@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'models/dice.dart';
+import 'screens/color_picker_screen.dart';
 
 void main() {
   runApp(const DiceRollerApp());
@@ -136,9 +137,30 @@ class _DiceRollerScreenState extends State<DiceRollerScreen> {
     );
   }
 
-  void _openColorPicker() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Выбор цвета будет в следующем этапе')),
+  void _openColorPicker() async {
+    final Color? selectedColor = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const ColorPickerScreen()),
     );
+    if (selectedColor != null) {
+      setState(() {
+        _diceColor = selectedColor;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Цвет изменён на ${_getColorName(selectedColor)}')),
+      );
+    }
+  }
+
+  String _getColorName(Color color) {
+    if (color == Colors.amber) return 'жёлтый';
+    if (color == Colors.red) return 'красный';
+    if (color == Colors.blue) return 'синий';
+    if (color == Colors.green) return 'зелёный';
+    if (color == Colors.purple) return 'фиолетовый';
+    if (color == Colors.pink) return 'розовый';
+    if (color == Colors.orange) return 'оранжевый';
+    if (color == Colors.teal) return 'бирюзовый';
+    return 'выбран';
   }
 }
