@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'models/dice.dart';
 import 'screens/color_picker_screen.dart';
 import 'services/storage_service.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 void main() {
   runApp(const DiceRollerApp());
@@ -19,6 +20,7 @@ class DiceRollerApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: const DiceRollerScreen(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
@@ -38,6 +40,17 @@ class _DiceRollerScreenState extends State<DiceRollerScreen> {
   bool _isRolling = false;
   bool _isLoading = true;
 
+  final List<int> _availableSides = [4, 6, 8, 10, 12, 20];
+
+  final Map<int, _TextConfig> _textConfigs = {
+    4:  const _TextConfig(offsetX: 0, offsetY: 0, fontSize: 48),
+    6:  const _TextConfig(offsetX: -2, offsetY: -30, fontSize: 48),
+    8:  const _TextConfig(offsetX: 0, offsetY: 0, fontSize: 48),
+    10: const _TextConfig(offsetX: 0, offsetY: -30, fontSize: 48),
+    12: const _TextConfig(offsetX: 0, offsetY: 0, fontSize: 48),
+    20: const _TextConfig(offsetX: 0, offsetY: 0, fontSize: 30),
+  };
+
   @override
   void initState() {
     super.initState();
@@ -47,7 +60,6 @@ class _DiceRollerScreenState extends State<DiceRollerScreen> {
   Future<void> _loadSettings() async {
     final savedSides = await StorageService.loadSides();
     final savedColor = await StorageService.loadColor();
-
     setState(() {
       _selectedSides = savedSides;
       _diceColor = savedColor;
@@ -63,18 +75,18 @@ class _DiceRollerScreenState extends State<DiceRollerScreen> {
       _isRolling = true;
     });
 
-    const int steps = 12;
-    const Duration stepDelay = Duration(milliseconds: 80);
+    const steps = 12;
+    const stepDelay = Duration(milliseconds: 80);
 
     for (int i = 0; i < steps; i++) {
-      final int tempResult = _dice.roll();
+      final tempResult = _dice.roll();
       setState(() {
         _currentResult = tempResult;
       });
       await Future.delayed(stepDelay);
     }
 
-    final int finalResult = _dice.roll();
+    final finalResult = _dice.roll();
     setState(() {
       _currentResult = finalResult;
       _isRolling = false;
@@ -100,7 +112,7 @@ class _DiceRollerScreenState extends State<DiceRollerScreen> {
 
   void _openColorPicker() async {
     if (_isRolling) return;
-    final Color? selectedColor = await Navigator.push(
+    final selectedColor = await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const ColorPickerScreen()),
     );
@@ -110,7 +122,7 @@ class _DiceRollerScreenState extends State<DiceRollerScreen> {
       });
       StorageService.saveColor(selectedColor);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Цвет кости изменён на ${_getColorName(selectedColor)}')),
+        SnackBar(content: Text('Цвет изменён на ${_getColorName(selectedColor)}')),
       );
     }
   }
@@ -127,87 +139,134 @@ class _DiceRollerScreenState extends State<DiceRollerScreen> {
     return 'другой';
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Кости'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 150,
-              height: 150,
-              decoration: BoxDecoration(
-                color: _diceColor,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: const [
-                  BoxShadow(blurRadius: 10, offset: Offset(5, 5)),
-                ],
-              ),
-              child: Center(
-                child: Text(
-                  '$_currentResult',
-                  style: const TextStyle(fontSize: 64, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-            const SizedBox(height: 40),
-            ElevatedButton.icon(
-              onPressed: _isRolling ? null : _rollWithAnimation,
-              icon: const Icon(Icons.casino),
-              label: const Text('Бросить!'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-                textStyle: const TextStyle(fontSize: 24),
-              ),
-            ),
-            const SizedBox(height: 30),
-            _buildSidesSelector(),
-            const SizedBox(height: 30),
-            OutlinedButton.icon(
-              onPressed: _isRolling ? null : _openColorPicker,
-              icon: const Icon(Icons.color_lens),
-              label: const Text('Изменить цвет кости'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget _buildDiceImage() {
+    final config = _textConfigs[_selectedSides] ?? const _TextConfig(offsetX: 0, offsetY: 0, fontSize: 48);
 
-  Widget _buildSidesSelector() {
-    return Column(
+    return Stack(
+      alignment: Alignment.center,
       children: [
-        const Text(
-          'Количество граней:',
-          style: TextStyle(fontSize: 18),
+        SvgPicture.asset(
+          'assets/svg/d$_selectedSides.svg',
+          color: _diceColor,
+          width: 200,
+          height: 200,
         ),
-        const SizedBox(height: 8),
-        SegmentedButton<int>(
-          segments: const [
-            ButtonSegment(value: 4, label: Text('d4')),
-            ButtonSegment(value: 6, label: Text('d6')),
-            ButtonSegment(value: 8, label: Text('d8')),
-            ButtonSegment(value: 10, label: Text('d10')),
-            ButtonSegment(value: 12, label: Text('d12')),
-            ButtonSegment(value: 20, label: Text('d20')),
-          ],
-          selected: {_selectedSides},
-          onSelectionChanged: _isRolling ? null : (Set<int> newSelection) {
-            _changeSides(newSelection.first);
-          },
+        Transform.translate(
+          offset: Offset(config.offsetX, config.offsetY),
+          child: Text(
+            '$_currentResult',
+            style: TextStyle(
+              fontSize: config.fontSize,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
         ),
       ],
     );
   }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: _availableSides.map((sides) {
+                      final isSelected = _selectedSides == sides;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: GestureDetector(
+                          onTap: _isRolling ? null : () => _changeSides(sides),
+                          child: Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isSelected ? Colors.amber : Colors.grey.shade800,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'd$sides',
+                                style: TextStyle(
+                                  color: isSelected ? Colors.black : Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+              const Spacer(),
+              _buildDiceImage(),
+              const Spacer(),
+              Column(
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _isRolling ? null : _rollWithAnimation,
+                    icon: const Icon(Icons.casino),
+                    label: const Text('Бросить!'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+                      textStyle: const TextStyle(fontSize: 24),
+                      backgroundColor: Colors.amber,
+                      foregroundColor: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  OutlinedButton.icon(
+                    onPressed: _isRolling ? null : _openColorPicker,
+                    icon: const Icon(Icons.color_lens),
+                    label: const Text('Изменить цвет кости'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 40),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TextConfig {
+  final double offsetX;
+  final double offsetY;
+  final double fontSize;
+
+  const _TextConfig({
+    required this.offsetX,
+    required this.offsetY,
+    required this.fontSize,
+  });
 }
